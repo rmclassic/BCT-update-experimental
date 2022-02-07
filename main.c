@@ -1,4 +1,7 @@
 #include "bct.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "bct_t20.h"
 
 u8 key[16] =             { 0x28, 0xa5 , 0xd1, 0x26 ,
                0xad, 0xf4 , 0x21, 0xe6 ,
@@ -13,27 +16,25 @@ u8 key[16] =             { 0x28, 0xa5 , 0xd1, 0x26 ,
 
 int main()
 {
-  std::ifstream f("../BCT_enc.bin", std::ios::ate | std::ios::binary);
-  int filesize = f.tellg();
-  f.seekg(0);
+  FILE* f = fopen("../BCT_enc.bin", "rb");
+  fseek(f, 0, SEEK_END);
+  int filesize = ftell(f);
 
-  char* file = new char[filesize];
-  f.read(file, filesize);
-  f.close();
-
-  std::cout << filesize;
-
-  u8* bct_dec = new u8[filesize];
+  char* file = (char*)malloc(filesize);
+  fseek(f, 0, SEEK_SET);
+  int hmuch = fread(file, filesize, filesize, f);
+  fclose(f);
+  printf("%d\n", hmuch);
+  u8* bct_dec = (u8*)malloc(filesize);
 
   int result = decrypt_bct(file, filesize, (u8*)key, (u8*)bct_dec);
   if (result != BCT_ERR_SUCCESS)
   {
-    std::cout << "error\n";
+    printf("error\n");
     return 0;
   }
 
-  std::ofstream ff("BCT_dec.bin", std::ios::binary);
-  ff.write((char*)bct_dec, filesize);
-  ff.close();
+  t20_test(bct_dec);
+
   return 0;
 }

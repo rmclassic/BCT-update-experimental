@@ -1,8 +1,6 @@
 #ifndef BCT_H
 #define BCT_H
 #include "uboot_aes.h"
-#include <fstream>
-#include <iostream>
 
 
 #define BCT_ERR_SUCCESS       0
