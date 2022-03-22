@@ -331,49 +331,12 @@ typedef struct nv_bootloader_info_rec {
 	nvboot_hash crypto_hash;
 } nv_bootloader_info;
 
-/**
- * Defines the bad block table structure stored in the BCT.
- */
-typedef struct nvboot_badblock_table_rec {
-	uint32_t entries_used;
-	uint8_t virtual_blk_size_log2;
-	uint8_t block_size_log2;
-	uint8_t bad_blks[NVBOOT_BAD_BLOCK_TABLE_SIZE / 8];
-} nvboot_badblock_table;
-
-/**
- * Contains the information needed to load BLs from the secondary boot device.
- *
- * - Supplying NumParamSets = 0 indicates not to load any of them.
- * - Supplying NumDramSets  = 0 indicates not to load any of them.
- * - The \c random_aes_blk member exists to increase the difficulty of
- *   key attacks based on knowledge of this structure.
- */
 typedef struct nvboot_config_table_rec {
-	nvboot_hash crypto_hash;
-	nvboot_hash random_aes_blk;
+	uint32_t reserved0[0x8];
 	uint32_t boot_data_version;
-	uint32_t block_size_log2;
-	uint32_t page_size_log2;
-	uint32_t partition_size;
-	uint32_t num_param_sets;
-	nvboot_dev_type dev_type[NVBOOT_BCT_MAX_PARAM_SETS];
-	nvboot_dev_params dev_params[NVBOOT_BCT_MAX_PARAM_SETS];
-	uint32_t num_sdram_sets;
-	nvboot_sdram_params sdram_params[NVBOOT_BCT_MAX_SDRAM_SETS];
-	nvboot_badblock_table badblock_table;
+	uint8_t reserved1[0xf26];
 	uint32_t bootloader_used;
 	nv_bootloader_info bootloader[NVBOOT_MAX_BOOTLOADERS];
-	uint8_t customer_data[NVBOOT_BCT_CUSTOMER_DATA_SIZE];
-	/*
-	 * ODMDATA is stored in the BCT in IRAM by the BootROM.
-	 * Read the data @ bct_start + (bct_size - 12). This works
-	 * on T20 and T30 BCTs, which are locked down. If this changes
-	 * in new chips, we can revisit this algorithm.
-	 */
-	uint32_t odm_data;
-	uint32_t reserved1;
-	uint8_t enable_fail_back;
-	uint8_t reserved[NVBOOT_BCT_RESERVED_SIZE];
+	uint32_t reserved2[0x1fc];
 } nvboot_config_table;
 #endif /* #ifndef INCLUDED_NVBOOT_BCT_T30_H */
