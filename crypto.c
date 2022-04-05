@@ -3,12 +3,16 @@
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2010 - 2011 NVIDIA Corporation <www.nvidia.com>
 */
-typedef unsigned char u8;
-typedef unsigned int u32;
+
 #include "crypto.h"
 #include "aes.c"
 
 
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2011 The Chromium OS Authors.
+ * (C) Copyright 2010 - 2011 NVIDIA Corporation <www.nvidia.com>
+ */
 
 static u8 zero_key[16];
 
@@ -17,6 +21,7 @@ static u8 zero_key[16];
 enum security_op {
 	SECURITY_SIGN		= 1 << 0,	/* Sign the data */
 	SECURITY_ENCRYPT	= 1 << 1,	/* Encrypt the data */
+	SECURITY_DECRYPT	= 1 << 2,	/* Dectypt the data */
 };
 
 /**
@@ -83,6 +88,8 @@ static void sign_object(u8 *key, u8 *key_schedule, u8 *src, u8 *dst,
 		aes_encrypt(AES128_KEY_LENGTH, tmp_data,
 			    key_schedule, dst);
 
+		debug("sign_obj: block %d of %d\n", i, num_aes_blocks);
+
 		/* Update pointers for next loop. */
 		cbc_chain_data = dst;
 		src += AES128_KEY_LENGTH;
@@ -90,7 +97,7 @@ static void sign_object(u8 *key, u8 *key_schedule, u8 *src, u8 *dst,
 }
 
 /**
- * Encrypt and sign a block of data (depending on security mode).
+ * Decrypt, encrypt or sign a block of data (depending on security mode).
  *
  * \param key		Input AES key, length AES128_KEY_LENGTH
  * \param oper		Security operations mask to perform (enum security_op)
@@ -98,47 +105,68 @@ static void sign_object(u8 *key, u8 *key_schedule, u8 *src, u8 *dst,
  * \param length	Size of source data
  * \param sig_dst	Destination address for signature, AES128_KEY_LENGTH bytes
  */
-static int encrypt_and_sign(u8 *key, enum security_op oper, u8 *src,
+static int tegra_crypto_core(u8 *key, enum security_op oper, u8 *src,
 			    u32 length, u8 *sig_dst)
 {
 	u32 num_aes_blocks;
 	u8 key_schedule[AES128_EXPAND_KEY_LENGTH];
 	u8 iv[AES128_KEY_LENGTH] = {0};
 
-	/*
-	 * The only need for a key is for signing/checksum purposes, so
-	 * if not encrypting, expand a key of 0s.
-	 */
+	debug("tegra_crypto_core: length = %d\n", length);
+
 	aes_expand_key(key, AES128_KEY_LENGTH, key_schedule);
 
 	num_aes_blocks = (length + AES128_KEY_LENGTH - 1) / AES128_KEY_LENGTH;
 
+	if (oper & SECURITY_DECRYPT) {
+		/* Perform this in place, resulting in src being decrypted. */
+		debug("tegra_crypto_core: begin decryption\n");
+		aes_cbc_decrypt_blocks(AES128_KEY_LENGTH, key_schedule, iv, src,
+				       src, num_aes_blocks);
+		debug("tegra_crypto_core: end decryption\n");
+	}
+
 	if (oper & SECURITY_ENCRYPT) {
 		/* Perform this in place, resulting in src being encrypted. */
-
+		debug("tegra_crypto_core: begin encryption\n");
 		aes_cbc_encrypt_blocks(AES128_KEY_LENGTH, key_schedule, iv, src,
 				       src, num_aes_blocks);
-
+		debug("tegra_crypto_core: end encryption\n");
 	}
 
 	if (oper & SECURITY_SIGN) {
 		/* encrypt the data, overwriting the result in signature. */
-
+		debug("tegra_crypto_core: begin signing\n");
 		sign_object(key, key_schedule, src, sig_dst, num_aes_blocks);
-
+		debug("tegra_crypto_core: end signing\n");
 	}
 
 	return 0;
 }
 
-int sign_data_block(u8 *source, unsigned length, u8 *signature, u8 *key)
+/**
+ * Tegra crypto group
+ */
+int sign_data_block(u8 *source, unsigned length, u8 *signature)
 {
-	return encrypt_and_sign(key, SECURITY_SIGN, source,
+	return tegra_crypto_core(zero_key, SECURITY_SIGN, source,
+				length, signature);
+}
+
+int sign_enc_data_block(u8 *source, unsigned length, u8 *signature, u8 *key)
+{
+	return tegra_crypto_core(key, SECURITY_SIGN, source,
 				length, signature);
 }
 
 int encrypt_data_block(u8 *source, unsigned length, u8 *key)
 {
-	return encrypt_and_sign(key, SECURITY_ENCRYPT, source,
+	return tegra_crypto_core(key, SECURITY_ENCRYPT, source,
+				length, NULL);
+}
+
+int decrypt_data_block(u8 *source, unsigned length, u8 *key)
+{
+	return tegra_crypto_core(key, SECURITY_DECRYPT, source,
 				length, NULL);
 }
