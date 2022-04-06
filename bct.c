@@ -20,7 +20,7 @@ int bct_patch(u8 *bct, u8 *ebt, u32 ebt_size)
 	u8 *bct_hash = bct;
 	int ret;
 
-	bct += BCT_HASH;
+	//bct += BCT_HASH;
 
 	ret = decrypt_data_block(bct, BCT_LENGTH, sbk);
 	if (ret)
@@ -28,18 +28,18 @@ int bct_patch(u8 *bct, u8 *ebt, u32 ebt_size)
 
 	bct_tbl = (nvboot_config_table *)bct;
 
-	ebt_size = ((ebt_size / EBT_ALIGNMENT) + 1) * EBT_ALIGNMENT;
-
-	ret = sign_enc_data_block(ebt, ebt_size, ebt_hash, sbk);
-	if (ret)
-		return 1;
+	//ebt_size = ((ebt_size / EBT_ALIGNMENT) + 1) * EBT_ALIGNMENT;
 
 	ret = encrypt_data_block(ebt, ebt_size, sbk);
 	if (ret)
 		return 1;
 
+	ret = sign_enc_data_block(ebt, ebt_size, ebt_hash, sbk);
+	if (ret)
+		return 1;
+
 	memcpy((u8 *)&bct_tbl->bootloader[0].crypto_hash,
-		ebt_hash, NVBOOT_CMAC_AES_HASH_LENGTH * 4);
+		ebt_hash, AES128_KEY_LENGTH);
 	bct_tbl->bootloader[0].entry_point = 0x85858585;
 	bct_tbl->bootloader[0].load_addr = 0x85858585;
 	bct_tbl->bootloader[0].length = 0x8585;

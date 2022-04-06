@@ -38,15 +38,14 @@ int main()
   u8* bct = 0;
   u8* ebt = 0;
 
-  int bct_size = ReadFile("../bct_enc.bin", &bct);
-  int ebt_size = ReadFile("../mtd0", &ebt);
+  int bct_size = ReadFile("orig_bct.bin", &bct);
+  int ebt_size = ReadFile("mod_bl_dec", &ebt);
   bct_patch(bct, ebt, ebt_size);
 
   nvboot_config_table * bct_tbl = (nvboot_config_table *)bct;
-  printf("0x%x\n", bct_tbl->bootloader[0].entry_point);
 
 
-  WriteFile("../bct_test.bin", bct, bct_size);
+  WriteFile("bct_test.bin", bct, bct_size);
 
   return 0;
 }
